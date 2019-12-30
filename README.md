@@ -23,5 +23,5 @@ It is recommended that you run the script with a cron job:
 On each client device, use the scheduler to automatically download and import the whitelist as needed:
 
 ```
-*/5 * * * * root curl -kOs https://example.com/iptadmin && chmod +x /tmp/iptadmin && /tmp/iptadmin
+*/5 * * * * root curl -kOs https://example.com/admin.ipt && chmod +x /tmp/admin.ipt && /tmp/admin.ipt
 ```
