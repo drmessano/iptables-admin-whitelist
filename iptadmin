@@ -111,8 +111,10 @@ if [ $ip6rules ]; then
  done
 fi
 
-printf "printf '# IPTables Admin Whitelist Script\n
-*/"$schedtime" * * * * root /usr/bin/curl -ks "$scripthost/$outfile" -o "$scriptpath/$outfile" & /bin/sh "$scriptpath/$outfile"' | tee /etc/cron.d/iptadmin\n" >> $script
+printf "printf '# IPTables Admin Whitelist Script
+PATH=/usr/bin:/bin:/sbin:
+*/"$schedtime" * * * * root curl -ks "$scripthost/$outfile" > "$scriptpath/$outfile" && sh "$scriptpath/$outfile"
+' | tee /etc/cron.d/iptadmin\n" >> $script
 
 if [ $failsafe == true ]; then
 # Unfinished
