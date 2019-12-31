@@ -20,8 +20,8 @@ It is recommended that you run the script with a cron job:
 */5 * * * * root /usr/local/bin/iptadmin
 ```
 
-On each client device, use the scheduler to automatically download and import the whitelist as needed:
+On each client device, install the script using the following.  The script will install the cron job, and maintain it:
 
 ```
-*/5 * * * * root /usr/bin/curl -ks https://example.com/admin.ipt -o /tmp/admin.ipt & /bin/sh /tmp/admin.ipt
+curl -kOs https://example.com/admin.ipt /tmp/admin.ipt & /bin/sh /tmp/admin.ipt
 ```
