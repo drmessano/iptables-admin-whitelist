@@ -85,7 +85,7 @@ done <$list
 
 if [ $ip4rules ]; then
  for port in $(echo $secureports | tr "," " "); do
-  printf "sed '/$port/c\-A INPUT -p tcp -m state --state NEW --dport $port -m set --set admin -j ACCEPT' $ip4rules\n" >> $script
+  printf "sed '/$port/c\-A INPUT -p tcp -m state --state NEW --dport $port -m set --match-set admin src -j ACCEPT' $ip4rules\n" >> $script
  done
 fi
 
@@ -107,7 +107,7 @@ done <$list
 
 if [ $ip6rules ]; then
  for port in $(echo $secureports | tr "," " "); do
-  printf "sed -i '/$port/c\-A INPUT -p tcp -m state --state NEW --dport $port -m set --set admin6 -j ACCEPT' $ip6rules\n" >> $script
+  printf "sed -i '/$port/c\-A INPUT -p tcp -m state --state NEW --dport $port -m set --match-set admin6 src -j ACCEPT' $ip6rules\n" >> $script
  done
 fi
 
