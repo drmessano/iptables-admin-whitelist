@@ -113,7 +113,7 @@ fi
 
 printf "printf '# IPTables Admin Whitelist Script
 PATH=/usr/bin:/bin:/sbin:
-*/"$schedtime" * * * * root curl -ks "$scripthost/$outfile" > "$scriptpath/$outfile" && sh "$scriptpath/$outfile"
+*/"$schedtime" * * * * root curl -ks "$scripthost/$outfile" > "$scriptpath/$outfile" && sh "$scriptpath/$outfile" >/dev/null 2>&1
 ' | tee /etc/cron.d/iptadmin\n" >> $script
 
 if [ $failsafe == true ]; then
