@@ -35,7 +35,7 @@ schedtime=5
 
 # Enable/Disable the Failsafe Script (optional). This removes the ipset option from port 22 after a set timeout,
 # should the script fail to fetch/run from the host server. Timeout is reset to failtime every script fetch/run.
-failsafe=false
+failsafe=true
 failtime=72h
 
 function ip4address () {
@@ -111,11 +111,37 @@ if [ $ip6rules ]; then
  done
 fi
 
-printf "printf '# IPTables Admin Whitelist Script
-PATH=/usr/bin:/bin:/sbin:
-*/"$schedtime" * * * * root curl -ks "$scripthost/$outfile" > "$scriptpath/$outfile" && sh "$scriptpath/$outfile" >/dev/null 2>&1
-' | tee /etc/cron.d/iptadmin\n" >> $script
+printf "if [ ! -f /etc/systemd/system/adminwhitelist.service ] || [ ! -f /etc/systemd/system/adminwhitelist.timer ]; then 
+printf '[Unit]
+Description=adminwhitelist update
+[Service]
+Type=simple
+ExecStart=curl -ks $scripthost/$outfile > $scriptpath/$outfile && sh $scriptpath/$outfile
+[Install]
+WantedBy=multi-user.target
+' | tee /etc/systemd/system/adminwhitelist.service
+printf '[Unit]
+Description=adminwhitelist update scheduler
+[Timer]
+OnCalendar=*:0/5
+Unit=adminwhitelist.service
+[Install]
+WantedBy=multi-user.target
+' | tee /etc/systemd/system/adminwhitelist.timer
+systemctl daemon-reload
+systemctl enable adminwhitelist.timer
+fi\n" >> $script
 
 if [ $failsafe == true ]; then
-# Unfinished
+printf "if [ ! -f $scriptpath/awfailsafe ]; then
+printf '#!/bin/bash
+ipset -exist add admin 0.0.0.0/0
+ipset -exist add admin6 ::/0\n' >> $scriptpath/awfailsafe.ipt
+fi\n" >> $script
+printf "if [ "'$(systemctl is-active awfailsafe.timer)'" != 'active' ]; then 
+ systemd-run --on-active=$failtime --unit awfailsafe.service sh $scriptpath/awfailsafe.ipt
+else 
+ systemctl restart awfailsafe.timer
+fi\n" >> $script
 fi
+
