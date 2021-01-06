@@ -116,7 +116,7 @@ printf '[Unit]
 Description=adminwhitelist update
 [Service]
 Type=simple
-ExecStart=curl -ks $scripthost/$outfile > $scriptpath/$outfile && sh $scriptpath/$outfile
+ExecStart=/bin/sh -c '/usr/bin/curl -ks https://cpe.2l2o.net/admin.ipt > /tmp/admin.ipt && sh /tmp/admin.ipt'
 [Install]
 WantedBy=multi-user.target
 ' | tee /etc/systemd/system/adminwhitelist.service
