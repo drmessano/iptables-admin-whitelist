@@ -10,8 +10,8 @@ list=/etc/iptadmin.lst
 # Sets the path to the script on the client.
 scriptpath=/tmp
 
-# Static file for ipset rules to run at startup.
-ipsetrules=/etc/iptables/ipset.rules
+# Sets the filename for the adminwhitelist ipset rules.
+awlrules=/etc/iptables/adminwhitelist.rules
 
 # (optional) Sets the filename for the IPTables rules/script files on the client.
 # This will allow the script to replace the iptables rules with rules that implement ipset.
@@ -67,18 +67,15 @@ script=$outpath/$outfile
 
 printf "#!/bin/bash
 # Generated on $(date)
-ipset -exist create admin hash:net$(hosttimeout) family inet
-ipset -exist create admin6 hash:net$(hosttimeout) family inet6
-printf 'ipset -exist create admin hash:net$(hosttimeout) family inet
-ipset -exist create admin6 hash:net$(hosttimeout) family inet6\n' | tee $ipsetrules
-" | tee $script
+printf 'create -exist admin hash:net$(hosttimeout) family inet
+create -exist admin6 hash:net$(hosttimeout) family inet6\n' | tee $awlrules
+" | tee $script &> /dev/null
 
 if [ $nmsservers ]; then
  for server in $(printf $nmsservers | tr "," " "); do
   ip4address $server
   if [ $ipv4addr ]; then
-   printf "ipset -exist add admin $ipv4addr$(nmstimeout)
-printf 'ipset -exist add admin $ipv4addr$(nmstimeout)\\\n' | tee -a $ipsetrules\n" | tee -a $script
+   printf "printf 'add -exist admin $ipv4addr$(nmstimeout)\\\n' | tee -a $awlrules\n" | tee -a $script &> /dev/null
   fi
  done
 fi
@@ -86,15 +83,14 @@ fi
 while read hostlist; do
   ip4address $hostlist
   if [ $ipv4addr ]; then
-   printf "ipset -exist add admin $ipv4addr$(hosttimeout)
-printf 'ipset -exist add admin $ipv4addr$(hosttimeout)\\\n' | tee -a $ipsetrules\n" | tee -a $script
+   printf "printf 'add -exist admin $ipv4addr$(hosttimeout)\\\n' | tee -a $awlrules\n" | tee -a $script &> /dev/null
   fi
 done <$list
 
 if [ $ip4rules ]; then
  for port in $(echo $secureports | tr "," " "); do
-  printf "sed -i '/$port/c\-A INPUT -p tcp -m state --state NEW --dport $port -m set --match-set admin src -j ACCEPT' $ip4rules\n
-" | tee -a $script
+  printf "sed -i '/$port/c\-A INPUT -p tcp -m state --state NEW --dport $port -m set --match-set admin src -j ACCEPT' $ip4rules
+" | tee -a $script &> /dev/null
  done
 fi
 
@@ -102,8 +98,7 @@ if [ $nmsservers ]; then
  for server in $(printf $nmsservers | tr "," " "); do
   ip6address $server
   if [ $ipv6addr ]; then
-   printf "ipset -exist add admin6 $ipv6addr$(nmstimeout)
-printf 'ipset -exist add admin6 $ipv6addr$(nmstimeout)\\\n' | tee -a $ipsetrules\n" | tee -a $script
+   printf "printf 'add -exist admin6 $ipv6addr$(nmstimeout)\\\n' | tee -a $awlrules\n" | tee -a $script &> /dev/null
   fi
  done
 fi
@@ -111,19 +106,20 @@ fi
 while read hostlist; do
   ip6address $hostlist
   if [ $ipv6addr ]; then
-   printf "ipset -exist add admin6 $ipv6addr$(hosttimeout)
-printf 'ipset -exist add admin6 $ipv6addr$(hosttimeout)\\\n' | tee -a $ipsetrules\n" | tee -a $script
+   printf "printf 'add -exist admin6 $ipv6addr$(hosttimeout)\\\n' | tee -a $awlrules\n" | tee -a $script &> /dev/null
   fi
 done <$list
 
 if [ $ip6rules ]; then
  for port in $(echo $secureports | tr "," " "); do
-  printf "sed -i '/$port/c\-A INPUT -p tcp -m state --state NEW --dport $port -m set --match-set admin6 src -j ACCEPT' $ip6rules\n
-" | tee -a $script
+  printf "sed -i '/$port/c\-A INPUT -p tcp -m state --state NEW --dport $port -m set --match-set admin6 src -j ACCEPT' $ip6rules
+" | tee -a $script &> /dev/null
  done
 fi
 
-printf "if [ ! -f /etc/systemd/system/iptwhitelistipu.service ] || [ ! -f /etc/systemd/system/iptwhitelistipu.timer ]; then
+printf "/sbin/ipset restore -f $awlrules\n" | tee -a $script &> /dev/null
+
+printf "if [ ! -f /etc/systemd/system/adminwhitelistipu.service ] || [ ! -f /etc/systemd/system/adminwhitelistipu.timer ]; then
 printf '[Unit]
 Description=adminwhitelist update
 [Service]
@@ -131,7 +127,7 @@ Type=simple
 ExecStart=/bin/sh 'curl -ks $scripthost/$outfile > $scriptpath/$outfile && sh $scriptpath/$outfile'
 [Install]
 WantedBy=multi-user.target
-' | tee /etc/systemd/system/iptwhitelistipu.service
+' | tee /etc/systemd/system/adminwhitelistipu.service
 printf '[Unit]
 Description=adminwhitelist update scheduler
 [Timer]
@@ -139,34 +135,33 @@ OnCalendar=*:0/5
 Unit=adminwhitelist.service
 [Install]
 WantedBy=multi-user.target
-' | tee /etc/systemd/system/iptwhitelistipu.timer
+' | tee /etc/systemd/system/adminwhitelistipu.timer
 systemctl daemon-reload
-systemctl enable iptwhitelistipu.timer
+systemctl enable adminwhitelistipu.timer
 fi
-if [ ! -f /etc/systemd/system/ipset.service ]; then
+if [ ! -f /etc/systemd/system/adminwhitelist.service ]; then
 printf '[Unit]
 Description=Packet Filtering Framework
 [Service]
 Type=simple
-ExecStart=/sbin/ipset restore -f $ipsetrules
-ExecReload=/sbin/ipset restore -f $ipsetrules
+ExecStart=/sbin/ipset restore -f $awlrules
+ExecReload=/sbin/ipset restore -f $awlrules
 [Install]
 WantedBy=multi-user.target
-' | tee /etc/systemd/system/ipset.service
+' | tee /etc/systemd/system/adminwhitelist.service
 systemctl daemon-reload
-systemctl enable ipset.service
-fi\n" >> $script
+systemctl enable adminwhitelist.service
+fi\n" | tee -a $script &> /dev/null
 
 if [ $failsafe == true ]; then
 printf "if [ ! -f $scriptpath/awfailsafe ]; then
 printf '#!/bin/bash
 ipset -exist add admin 0.0.0.0/0
 ipset -exist add admin6 ::/0\n' >> $scriptpath/awfailsafe.ipt
-fi\n" >> $script
+fi\n" | tee -a $script &> /dev/null
 printf "if [ "'$(systemctl is-active awfailsafe.timer)'" != 'active' ]; then
  systemd-run --on-active=$failtime --unit awfailsafe.service sh $scriptpath/awfailsafe.ipt
 else
  systemctl restart awfailsafe.timer
-fi\n" >> $script
+fi\n" | tee -a $script &> /dev/null
 fi
-
